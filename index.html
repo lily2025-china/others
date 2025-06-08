@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>反应时间测试</title>
+    <title>反应时间测试 - 安卓兼容版</title>
     <style>
         * {
             margin: 0;
@@ -283,6 +283,16 @@
                 box-shadow: inset 0 0 25px rgba(255, 255, 255, 0.2);
             }
         }
+        
+        /* Android 兼容性改进 */
+        .android-warning {
+            background: rgba(255, 100, 100, 0.3);
+            border-radius: 10px;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -306,6 +316,9 @@
                 <li>听到声音后立即点击屏幕</li>
                 <li>尽量在声音出现后快速反应</li>
             </ol>
+            <div id="androidWarning" class="android-warning">
+                注意：某些安卓设备可能需要允许自动播放声音。如果听不到声音，请尝试在浏览器设置中允许自动播放。
+            </div>
         </div>
         
         <div id="gameArea" class="game-area ready">
@@ -357,7 +370,13 @@
     <script>
         // 设备检测
         function detectDevice() {
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const ua = navigator.userAgent;
+            const isAndroid = /Android/i.test(ua);
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+            
+            if (isAndroid) {
+                return '安卓设备';
+            }
             return isMobile ? '平板/手机' : '电脑';
         }
         
@@ -370,28 +389,39 @@
         const testCount = document.getElementById('testCount');
         const historyList = document.getElementById('historyList');
         const deviceInfo = document.getElementById('deviceInfo');
+        const androidWarning = document.getElementById('androidWarning');
         
         let gameState = 'ready'; // ready, waiting, testing, too-early, result
         let startTime = 0;
         let timeoutId;
         let reactionTimes = [];
+        let audioContext;
+        let audioElement;
         
         // 更新设备信息
-        deviceInfo.textContent = `设备类型: ${detectDevice()}`;
+        const deviceType = detectDevice();
+        deviceInfo.textContent = `设备类型: ${deviceType}`;
         
-        // 创建音频上下文（兼容Safari）
-        let audioContext;
-        try {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        } catch (e) {
-            gameText.innerHTML = '音频不支持<br><div class="sub-text">请使用Chrome/Firefox浏览器</div>';
+        // 如果是安卓设备，显示警告信息
+        if (deviceType === '安卓设备') {
+            androidWarning.style.display = 'block';
+        }
+        
+        // 创建音频元素作为备选方案
+        function createAudioElement() {
+            audioElement = new Audio();
+            audioElement.src = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYyJh4mFhYeHiYqKjI2Oj5CRkpOUlZaXmJmam5ydnp+goaKjpKWmp6ipqqusra6vsLGys7S1tre4ubq7vL2+v8DBwsPExcbHyMnKy8zNzs/Q0dLT1NXW19jZ2tvc3d7f4OHi4+Tl5ufo6err7O3u7/Dx8vP09fb3+Pn6+/z9/v8AAAD/AA==";
+            audioElement.preload = 'auto';
         }
         
         // 创建"叮"的声音
         function playBeep() {
-            if (!audioContext) return;
-            
+            // 尝试使用Web Audio API
             try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
                 const oscillator = audioContext.createOscillator();
                 const gainNode = audioContext.createGain();
                 
@@ -408,6 +438,21 @@
                 setTimeout(() => {
                     oscillator.stop();
                 }, 300);
+                return;
+            } catch (e) {
+                console.log("Web Audio API不可用，使用备用音频");
+            }
+            
+            // 备用方案：使用<audio>元素
+            try {
+                if (!audioElement) {
+                    createAudioElement();
+                }
+                audioElement.play().catch(e => {
+                    console.error("音频播放失败:", e);
+                    // 如果音频播放失败，提供视觉提示
+                    gameText.innerHTML = '声音提示!<div class="sub-text">立即点击屏幕</div>';
+                });
             } catch (e) {
                 console.error("音频播放失败:", e);
                 // 如果音频播放失败，提供视觉提示
@@ -417,6 +462,21 @@
         
         // 开始测试
         function startTest() {
+            // 安卓设备需要用户交互后才能播放音频
+            if (deviceType === '安卓设备' && !audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    // 创建并播放一个无声缓冲区以解锁音频
+                    const buffer = audioContext.createBuffer(1, 1, 22050);
+                    const source = audioContext.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(audioContext.destination);
+                    source.start();
+                } catch (e) {
+                    console.log("无法初始化Web Audio API");
+                }
+            }
+            
             gameState = 'waiting';
             gameArea.className = 'game-area waiting';
             gameText.innerHTML = '准备...<div class="sub-text">等待声音出现</div>';
@@ -534,6 +594,11 @@
             handleClick();
         });
         
+        // 防止移动设备上的默认行为
+        gameArea.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+        });
+        
         // 初始化游戏
         resetGame();
         
@@ -541,6 +606,16 @@
         window.addEventListener('resize', function() {
             deviceInfo.textContent = `设备类型: ${detectDevice()}`;
         });
+        
+        // 安卓设备特殊处理：禁用双击缩放
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
     </script>
 </body>
 </html>
