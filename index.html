@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>反应时间测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            overflow: hidden;
+            padding: 20px;
+            position: relative;
+        }
+        
+        /* 背景装饰 */
+        .sensory-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+        
+        .sensory-icon {
+            position: absolute;
+            font-size: 3rem;
+            opacity: 0.3;
+            animation: float 15s infinite linear;
+        }
+        
+        .taste { top: 10%; left: 5%; animation-delay: 0s; }
+        .sound { top: 20%; right: 10%; animation-delay: 3s; }
+        .sight { bottom: 15%; left: 15%; animation-delay: 6s; }
+        .smell { bottom: 25%; right: 20%; animation-delay: 9s; }
+        .touch { top: 50%; left: 50%; animation-delay: 12s; }
+        
+        @keyframes float {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(20px, 20px) rotate(90deg); }
+            50% { transform: translate(40px, 0) rotate(180deg); }
+            75% { transform: translate(20px, -20px) rotate(270deg); }
+            100% { transform: translate(0, 0) rotate(360deg); }
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+            background: rgba(0, 0, 30, 0.7);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 10;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: #ffcc00;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        .instructions ol {
+            text-align: left;
+            padding-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        .game-area {
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 25px 0;
+            position: relative;
+            overflow: hidden;
+            transition: background-color 0.5s;
+            border-radius: 15px;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+        }
+        
+        .game-area.ready {
+            background-color: #87CEEB; /* 天蓝色 */
+        }
+        
+        .game-area.waiting {
+            background-color: #ff9966; /* 橙色 */
+        }
+        
+        .game-area.too-early {
+            background-color: #ff5252; /* 红色 */
+        }
+        
+        .game-area.result {
+            background-color: #4CAF50; /* 绿色 */
+        }
+        
+        .game-text {
+            font-size: 3rem;
+            font-weight: bold;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .sub-text {
+            font-size: 1.3rem;
+            margin-top: 15px;
+            opacity: 0.9;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stats-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stats {
+            flex: 1;
+            min-width: 150px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 15px;
+        }
+        
+        .stat-box {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffcc00;
+            margin: 5px 0;
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+        
+        .history {
+            width: 100%;
+            margin-top: 20px;
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 15px;
+        }
+        
+        .history-title {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #ffcc00;
+        }
+        
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 5px;
+            margin: 5px 0;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .history-time {
+            font-weight: bold;
+            color: #ffcc00;
+        }
+        
+        .footer {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+        
+        .device-indicator {
+            padding: 5px 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .game-text {
+                font-size: 2.2rem;
+            }
+            
+            .sub-text {
+                font-size: 1.1rem;
+            }
+            
+            .stat-value {
+                font-size: 1.6rem;
+            }
+            
+            .game-area {
+                height: 250px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px 15px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .game-text {
+                font-size: 1.8rem;
+            }
+            
+            .sub-text {
+                font-size: 1rem;
+            }
+            
+            .stat-value {
+                font-size: 1.5rem;
+            }
+            
+            .instructions {
+                padding: 15px;
+                font-size: 1rem;
+            }
+            
+            .game-area {
+                height: 200px;
+            }
+        }
+        
+        @media (hover: hover) {
+            .game-area:hover {
+                box-shadow: inset 0 0 25px rgba(255, 255, 255, 0.2);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 感官背景装饰 -->
+    <div class="sensory-bg">
+        <div class="sensory-icon taste">👅</div>
+        <div class="sensory-icon sound">👂</div>
+        <div class="sensory-icon sight">👁️</div>
+        <div class="sensory-icon smell">👃</div>
+        <div class="sensory-icon touch">✋</div>
+    </div>
+    
+    <div class="container">
+        <h1>反应时间测试</h1>
+        
+        <div class="instructions">
+            <p>测试你的听觉反应速度！</p>
+            <ol>
+                <li>点击屏幕开始测试</li>
+                <li>等待听到"叮"的声音</li>
+                <li>听到声音后立即点击屏幕</li>
+                <li>尽量在声音出现后快速反应</li>
+            </ol>
+        </div>
+        
+        <div id="gameArea" class="game-area ready">
+            <div id="gameText" class="game-text">
+                反应时间测试
+                <div class="sub-text">当听到声音时，尽快单击</div>
+                <div class="sub-text">单击任意位置开始</div>
+            </div>
+        </div>
+        
+        <div class="stats-container">
+            <div class="stats">
+                <div class="stat-box">
+                    <div id="lastTime" class="stat-value">0 ms</div>
+                    <div class="stat-label">上次成绩</div>
+                </div>
+            </div>
+            <div class="stats">
+                <div class="stat-box">
+                    <div id="bestTime" class="stat-value">0 ms</div>
+                    <div class="stat-label">最佳成绩</div>
+                </div>
+            </div>
+            <div class="stats">
+                <div class="stat-box">
+                    <div id="avgTime" class="stat-value">0 ms</div>
+                    <div class="stat-label">平均成绩</div>
+                </div>
+            </div>
+            <div class="stats">
+                <div class="stat-box">
+                    <div id="testCount" class="stat-value">0</div>
+                    <div class="stat-label">测试次数</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="history">
+            <div class="history-title">测试记录</div>
+            <div id="historyList"></div>
+        </div>
+        
+        <div class="footer">
+            <div>注意：人类平均反应时间约为250ms，专业运动员可达150ms</div>
+            <div id="deviceInfo" class="device-indicator">设备类型检测中...</div>
+        </div>
+    </div>
+
+    <script>
+        // 设备检测
+        function detectDevice() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            return isMobile ? '平板/手机' : '电脑';
+        }
+        
+        // 游戏状态变量
+        const gameArea = document.getElementById('gameArea');
+        const gameText = document.getElementById('gameText');
+        const lastTime = document.getElementById('lastTime');
+        const bestTime = document.getElementById('bestTime');
+        const avgTime = document.getElementById('avgTime');
+        const testCount = document.getElementById('testCount');
+        const historyList = document.getElementById('historyList');
+        const deviceInfo = document.getElementById('deviceInfo');
+        
+        let gameState = 'ready'; // ready, waiting, testing, too-early, result
+        let startTime = 0;
+        let timeoutId;
+        let reactionTimes = [];
+        
+        // 更新设备信息
+        deviceInfo.textContent = `设备类型: ${detectDevice()}`;
+        
+        // 创建音频上下文（兼容Safari）
+        let audioContext;
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            gameText.innerHTML = '音频不支持<br><div class="sub-text">请使用Chrome/Firefox浏览器</div>';
+        }
+        
+        // 创建"叮"的声音
+        function playBeep() {
+            if (!audioContext) return;
+            
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 880; // A5音高
+                gainNode.gain.value = 0.3;
+                
+                oscillator.start();
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
+                
+                setTimeout(() => {
+                    oscillator.stop();
+                }, 300);
+            } catch (e) {
+                console.error("音频播放失败:", e);
+                // 如果音频播放失败，提供视觉提示
+                gameText.innerHTML = '声音提示!<div class="sub-text">立即点击屏幕</div>';
+            }
+        }
+        
+        // 开始测试
+        function startTest() {
+            gameState = 'waiting';
+            gameArea.className = 'game-area waiting';
+            gameText.innerHTML = '准备...<div class="sub-text">等待声音出现</div>';
+            
+            // 设置2-3秒的随机延迟
+            const delay = Math.random() * 1000 + 2000;
+            
+            timeoutId = setTimeout(() => {
+                if (gameState === 'waiting') {
+                    gameState = 'testing';
+                    playBeep();
+                    startTime = new Date().getTime();
+                    gameText.innerHTML = '声音已播放！<div class="sub-text">立即点击屏幕</div>';
+                }
+            }, delay);
+        }
+        
+        // 处理点击事件
+        function handleClick() {
+            switch (gameState) {
+                case 'ready':
+                    startTest();
+                    break;
+                    
+                case 'waiting':
+                    // 提前点击
+                    clearTimeout(timeoutId);
+                    gameState = 'too-early';
+                    gameArea.className = 'game-area too-early';
+                    gameText.innerHTML = '过早点击！<div class="sub-text">请等待声音出现</div>';
+                    
+                    setTimeout(() => {
+                        resetGame();
+                    }, 1500);
+                    break;
+                    
+                case 'testing':
+                    // 有效点击
+                    const endTime = new Date().getTime();
+                    const reactionTime = endTime - startTime;
+                    
+                    // 检查是否低于100毫秒（可能为预判）
+                    if (reactionTime < 100) {
+                        gameState = 'too-early';
+                        gameArea.className = 'game-area too-early';
+                        gameText.innerHTML = '反应过快！<div class="sub-text">请等待声音出现</div>';
+                        
+                        setTimeout(() => {
+                            resetGame();
+                        }, 1500);
+                    } else {
+                        gameState = 'result';
+                        gameArea.className = 'game-area result';
+                        gameText.innerHTML = `反应时间: <span style="font-size:3.5rem;">${reactionTime}</span> ms<div class="sub-text">点击屏幕重新开始</div>`;
+                        
+                        // 更新统计数据
+                        updateStats(reactionTime);
+                    }
+                    break;
+                    
+                case 'too-early':
+                    // 错误状态下点击 - 立即重置
+                    resetGame();
+                    break;
+                    
+                case 'result':
+                    // 结果状态下点击 - 重新开始
+                    resetGame();
+                    break;
+            }
+        }
+        
+        // 更新统计数据
+        function updateStats(time) {
+            // 更新上次成绩
+            lastTime.textContent = time + ' ms';
+            
+            // 更新最佳成绩
+            reactionTimes.push(time);
+            const best = Math.min(...reactionTimes);
+            bestTime.textContent = best + ' ms';
+            
+            // 更新平均成绩
+            const sum = reactionTimes.reduce((a, b) => a + b, 0);
+            const avg = Math.round(sum / reactionTimes.length);
+            avgTime.textContent = avg + ' ms';
+            
+            // 更新测试次数
+            testCount.textContent = reactionTimes.length;
+            
+            // 添加历史记录
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            historyItem.innerHTML = `
+                <span>测试 #${reactionTimes.length}</span>
+                <span class="history-time">${time} ms</span>
+            `;
+            historyList.appendChild(historyItem);
+            
+            // 滚动到最新记录
+            historyList.scrollTop = historyList.scrollHeight;
+        }
+        
+        // 重置游戏
+        function resetGame() {
+            gameState = 'ready';
+            gameArea.className = 'game-area ready';
+            gameText.innerHTML = '反应时间测试<div class="sub-text">当听到声音时，尽快单击</div><div class="sub-text">单击任意位置开始</div>';
+        }
+        
+        // 添加事件监听器（同时支持鼠标和触摸）
+        gameArea.addEventListener('click', handleClick);
+        gameArea.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            handleClick();
+        });
+        
+        // 初始化游戏
+        resetGame();
+        
+        // 窗口大小调整处理
+        window.addEventListener('resize', function() {
+            deviceInfo.textContent = `设备类型: ${detectDevice()}`;
+        });
+    </script>
+</body>
+</html>
